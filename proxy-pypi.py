@@ -61,15 +61,17 @@ def load_gemnasium_db():
     gem_db[c[0]][c[1].lower()].append(d)
 
 def is_affected(names, versions, types="pypi"):
+  # TODO: https://github.com/ctxis/cvsslib -> needed to check CVSS scores
   if names.lower() not in gem_db[types].keys():
     return False
-  target = gem_db[types][names.lower()]
-  if versions in target['fixed_versions']:
-    return False
-  for i in target['affected_range'].split("||"):
-    if versions in SpecifierSet(i.strip()):
-      return True
-  return False
+  res = False
+  for target in gem_db[types][names.lower()]:
+    if versions in target['fixed_versions']:
+      res = res or False
+    for i in target['affected_range'].split("||"):
+      if versions in SpecifierSet(i.strip()):
+        res = True
+  return res
 
 ##############
 proxy = Blueprint('proxy', __name__)
