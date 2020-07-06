@@ -45,7 +45,8 @@ def convert_generic_verstr(q):
 # Loading Gemnasium Database
 gem_db = {}
 def load_gemnasium_db():
-  dt = {} # Clear All
+  global gem_db
+  gem_db = {} # Clear All
   for i in subprocess.getoutput("find %s/pypi/ | grep '.yml'" % (GEMNASIUM_DB_PATH,)).splitlines():
     if not i.endswith(".yml"): continue
     d = yaml.load(open(i), Loader=yaml.FullLoader)
@@ -55,7 +56,9 @@ def load_gemnasium_db():
     if not c[0] in gem_db.keys(): gem_db[c[0]] = {}
     d['affected_range_original'] = d['affected_range']
     d['affected_range'] = convert_generic_verstr(d['affected_range'])
-    gem_db[c[0]][c[1].lower()] = d
+    if c[1].lower() not in gem_db[c[0]].keys():
+      gem_db[c[0]][c[1].lower()] = []
+    gem_db[c[0]][c[1].lower()].append(d)
 
 def is_affected(names, versions, types="pypi"):
   if names.lower() not in gem_db[types].keys():
