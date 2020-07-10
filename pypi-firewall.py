@@ -82,17 +82,17 @@ def check_cvss_baseline(i):
   bc3 = c3.split(",")
   if 'cvss_v2' in i.keys():
     t = calculate_vector(i['cvss_v2'], cvss2)
-    for i in range(3):
-      if t[i] is None:
+    for j in range(3):
+      if t[j] is None:
         continue
-      if t[i] >= float(bc2[i]):
+      if t[j] >= float(bc2[j]):
         return True
-  if 'cvss_v3' in target.keys():
+  if 'cvss_v3' in i.keys():
     t = calculate_vector(i['cvss_v3'], cvss3)
-    for i in range(3):
-      if t[i] is None:
+    for j in range(3):
+      if t[j] is None:
         continue
-      if t[i] >= float(bc3[i]):
+      if t[j] >= float(bc3[j]):
         return True
   return False
 
