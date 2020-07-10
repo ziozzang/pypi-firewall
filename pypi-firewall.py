@@ -25,6 +25,8 @@ from flask import Flask, Blueprint, request, Response, url_for
 from werkzeug.datastructures import Headers
 from werkzeug.exceptions import NotFound
 
+from cvsslib import cvss2, cvss3, calculate_vector
+
 app = Flask(__name__)
 
 # Default Configuration
@@ -32,6 +34,25 @@ DEBUG_FLAG = False
 LISTEN_PORT = 8080
 
 GEMNASIUM_DB_PATH = "/opt/gemnasium-db"
+if 'GEMNASIUM_DB_PATH' in os.environ.keys():
+    if len(os.environ['GEMNASIUM_DB_PATH']) > 0:
+        GEMNASIUM_DB_PATH = os.environ['GEMNASIUM_DB_PATH']
+IGNORE_CVE_IDS = ""
+if 'IGNORE_CVE_IDS' in os.environ.keys():
+    if len(os.environ['IGNORE_CVE_IDS']) > 0:
+        IGNORE_CVE_IDS = os.environ['IGNORE_CVE_IDS']
+WHITELIST_APPS = "" #org.codehaus.plexus/plexus-utils"
+if 'WHITELIST_APPS' in os.environ.keys():
+    if len(os.environ['WHITELIST_APPS']) > 0:
+        WHITELIST_APPS = os.environ['WHITELIST_APPS']
+FLAG_SKIP_NO_CVSS_DATA = True # if True -> skipping no CVSS discovered
+if 'FLAG_SKIP_NO_CVSS_DATA' in os.environ.keys():
+    if len(os.environ['FLAG_SKIP_NO_CVSS_DATA']) > 0:
+        FLAG_SKIP_NO_CVSS_DATA = bool(int(os.environ['FLAG_SKIP_NO_CVSS_DATA']))
+CVSS_SCORE_BASELINE = "6,6,6|6,6,6" # CVSSv2 / CVSSv3
+if 'CVSS_SCORE_BASELINE' in os.environ.keys():
+    if len(os.environ['CVSS_SCORE_BASELINE']) > 0:
+        FLAG_SKIP_NO_CVSS = bool(int(os.environ['CVSS_SCORE_BASELINE']))
 
 # Load Gemnasium DB(git) to Memory
 def convert_generic_verstr(q):
@@ -42,6 +63,47 @@ def convert_generic_verstr(q):
     res += ",".join(i.split())
   return res
 
+
+cve_ids = []
+
+
+def load_ignorence_cve_ids():
+    global cve_ids, IGNORE_CVE_IDS
+    cve_ids = []
+    for i in IGNORE_CVE_IDS.split(","):
+        cve_ids.append(i.strip())
+
+
+def check_cvss_baseline(i):
+  if FLAG_SKIP_NO_CVSS_DATA and (('cvss_v3' not in i.keys()) and ('cvss_v2' not in i.keys())):
+    return False
+  c2,c3 = CVSS_SCORE_BASELINE.split("|")
+  bc2 = c2.split(",")
+  bc3 = c3.split(",")
+  if 'cvss_v2' in i.keys():
+    t = calculate_vector(i['cvss_v2'], cvss2)
+    for i in range(3):
+      if t[i] is None:
+        continue
+      if t[i] >= float(bc2[i]):
+        return True
+  if 'cvss_v3' in target.keys():
+    t = calculate_vector(i['cvss_v3'], cvss3)
+    for i in range(3):
+      if t[i] is None:
+        continue
+      if t[i] >= float(bc3[i]):
+        return True
+  return False
+
+def print_cvss_score(target):
+  if 'cvss_v2' in target.keys():
+    print(">> CVSS V2: Score:", calculate_vector(target['cvss_v2'], cvss2))
+    print(">> CVSS V2: Vector:", target['cvss_v2'])
+  if 'cvss_v3' in target.keys():
+    print(">> CVSS V3: Score:", calculate_vector(target['cvss_v3'], cvss3))
+    print(">> CVSS V3: Vector:", target['cvss_v3'])
+    
 # Loading Gemnasium Database
 gem_db = {}
 def load_gemnasium_db():
@@ -61,17 +123,33 @@ def load_gemnasium_db():
     gem_db[c[0]][c[1].lower()].append(d)
 
 def is_affected(names, versions, types="pypi"):
-  # TODO: https://github.com/ctxis/cvsslib -> needed to check CVSS scores
-  if names.lower() not in gem_db[types].keys():
-    return False
-  res = False
-  for target in gem_db[types][names.lower()]:
-    if versions in target['fixed_versions']:
-      res = res or False
-    for i in target['affected_range'].split("||"):
-      if versions in SpecifierSet(i.strip()):
-        res = True
-  return res
+
+    # TODO: https://github.com/ctxis/cvsslib -> needed to check CVSS score
+    if names.lower().strip() in WHITELIST_APPS.lower().split(","):
+        print(">> Whitelisted: ", names.lower().strip())
+        return False
+    if names.lower().strip() not in gem_db[types].keys():
+        print(">> No Known Security issues on DB: ", names.lower().strip())
+        return False
+    res = False
+    for target in gem_db[types][names.lower()]:
+        if target['identifier'] in cve_ids:
+            print("> CVE ID is whitelisted:",target['identifier'])
+            continue
+        if not check_cvss_baseline(target):
+            print("> CVE Baseline is passed: %s[%s]" % (names, versions))
+            print_cvss_score(target)
+            continue
+        if versions in target['fixed_versions']:
+            res = res or False
+        for i in target['affected_range'].split("||"):
+            if versions in SpecifierSet(i.strip()):
+                print("> ID: %s\n> Notes: %s" % (target['identifier'], target['title']))
+                #print(target)
+                print_cvss_score(target)
+                res = True
+                break
+    return res
 
 ##############
 proxy = Blueprint('proxy', __name__)
