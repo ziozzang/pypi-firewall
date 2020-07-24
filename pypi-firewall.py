@@ -272,7 +272,7 @@ def packages_request(file=""):
   if not is_affected(pkg_name, pkg_version):
     print(">> name: '%s' / version: '%s' - Not Affected" % (pkg_name, pkg_version))
     # ClamAV scanning.
-    open(TMP_FILE_NAME,"w").write(contents)
+    open(TMP_FILE_NAME,"wb").write(contents)
     r = os.system("clamdscan %s" %(TMP_FILE_NAME,))
     if r == 0:
       d['content-length'] = len(contents)

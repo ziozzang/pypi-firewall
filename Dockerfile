@@ -5,6 +5,10 @@ COPY * /opt/
 EXPOSE 8080
 RUN apt update && apt install -fy clamav clamav-daemon && \
     pip install -r requirements.txt && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* && \
+    mkdir -p /var/run/clamav/ /var/lib/clamav/ && \
+    chown -R 102:104 /var/run/clamav/ /var/lib/clamav
+
+#RUN freshclam
 
 CMD ["bash", "/opt/startup.sh"]

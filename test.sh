@@ -15,6 +15,7 @@ docker run -d \
   --name=pypi-firewall \
   -p ${PORTS}:8080 \
   -v `pwd`/gemnasium-db:/opt/gemnasium-db \
+  -v `pwd`/clamav:/var/lib/clamav \
   pypi-firewall
 
 # Wait for DB loading
