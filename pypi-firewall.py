@@ -242,7 +242,7 @@ def packages_request(file=""):
   d = {}
   response_headers = Headers()
   for key, value in resp.getheaders():
-    print ("HEADER: '%s':'%s'" % (key, value))
+    #print ("HEADER: '%s':'%s'" % (key, value))
     d[key.lower()] = value
     if key in ["content-length", "connection", "content-type"]: continue
 
@@ -276,11 +276,11 @@ def packages_request(file=""):
       if j[0].lower() == "version":
         pkg_version = j[1].strip()
   if not is_affected(pkg_name, pkg_version):
-    print(">> name: '%s' / version: '%s' - Not Affected" % (pkg_name, pkg_version))
     # ClamAV scanning.
     open(TMP_FILE_NAME,"wb").write(contents)
-    r = os.system("clamdscan %s" %(TMP_FILE_NAME,))
+    r = os.system("clamdscan %s > /dev/null" %(TMP_FILE_NAME,))
     if r == 0:
+      print(">> name: '%s' / version: '%s' - Not Affected" % (pkg_name, pkg_version))
       d['content-length'] = len(contents)
       flask_response = Response(response=contents,
                             status=resp.status,
