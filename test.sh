@@ -11,6 +11,10 @@ else
   git clone https://gitlab.com/gitlab-org/security-products/gemnasium-db.git
 fi
 
+# wget https://pivotal-clamav-mirror.s3.amazonaws.com/main.cvd
+# wget https://pivotal-clamav-mirror.s3.amazonaws.com/daily.cvd
+# wget https://pivotal-clamav-mirror.s3.amazonaws.com/bytecode.cvd
+
 docker run -d \
   --name=pypi-firewall \
   -p ${PORTS}:8080 \
