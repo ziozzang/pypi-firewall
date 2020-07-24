@@ -109,23 +109,22 @@ def print_cvss_score(target):
 # Loading Gemnasium Database
 gem_db = {}
 def load_gemnasium_db():
-  global gem_db
-  gem_db = {} # Clear All
+  gdb = {} # Clear All
   for i in subprocess.getoutput("find %s/pypi/ | grep '.yml'" % (GEMNASIUM_DB_PATH,)).splitlines():
     if not i.endswith(".yml"): continue
     d = yaml.load(open(i), Loader=yaml.FullLoader)
     if not 'package_slug' in d.keys():
       continue
     c = d['package_slug'].split('/',1)
-    if not c[0] in gem_db.keys(): gem_db[c[0]] = {}
+    if not c[0] in gdb.keys(): gdb[c[0]] = {}
     d['affected_range_original'] = d['affected_range']
     d['affected_range'] = convert_generic_verstr(d['affected_range'])
-    if c[1].lower() not in gem_db[c[0]].keys():
-      gem_db[c[0]][c[1].lower()] = []
-    gem_db[c[0]][c[1].lower()].append(d)
+    if c[1].lower() not in gdb[c[0]].keys():
+      gdb[c[0]][c[1].lower()] = []
+    gdb[c[0]][c[1].lower()].append(d)
+  return gdb
 
 def is_affected(names, versions, types="pypi"):
-
     # TODO: https://github.com/ctxis/cvsslib -> needed to check CVSS score
     if names.lower().strip() in WHITELIST_APPS.lower().split(","):
         print(">> Whitelisted: ", names.lower().strip())
@@ -155,6 +154,13 @@ def is_affected(names, versions, types="pypi"):
 
 ##############
 proxy = Blueprint('proxy', __name__)
+
+
+@proxy.route('/reload/', methods=["GET"])
+def force_reload():
+  global gem_db
+  gem_db = load_gemnasium_db()
+  return "Reloaded"
 
 # pypi started from /pypi/
 @proxy.route('/', methods=["GET"])
@@ -291,6 +297,6 @@ def packages_request(file=""):
 
   return flask_response
 
-load_gemnasium_db()
+gem_db = load_gemnasium_db()
 app.register_blueprint(proxy)
 app.run(debug=DEBUG_FLAG, host='0.0.0.0', port=LISTEN_PORT)
