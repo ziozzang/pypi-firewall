@@ -54,6 +54,8 @@ if 'CVSS_SCORE_BASELINE' in os.environ.keys():
     if len(os.environ['CVSS_SCORE_BASELINE']) > 0:
         FLAG_SKIP_NO_CVSS = bool(int(os.environ['CVSS_SCORE_BASELINE']))
 
+TMP_FILE_NAME = "/tmp/target-bin"
+
 # Load Gemnasium DB(git) to Memory
 def convert_generic_verstr(q):
   res = ""
@@ -269,10 +271,19 @@ def packages_request(file=""):
         pkg_version = j[1].strip()
   if not is_affected(pkg_name, pkg_version):
     print(">> name: '%s' / version: '%s' - Not Affected" % (pkg_name, pkg_version))
-    d['content-length'] = len(contents)
-    flask_response = Response(response=contents,
+    # ClamAV scanning.
+    open(TMP_FILE_NAME,"w").write(contents)
+    r = os.system("clamdscan %s" %(TMP_FILE_NAME,))
+    if r == 0:
+      d['content-length'] = len(contents)
+      flask_response = Response(response=contents,
                             status=resp.status,
                             headers=d)
+    else:
+      print(">> name: '%s' / version: '%s' - ClamAV Scanning Failed / 404 Returned" % (pkg_name, pkg_version))
+      flask_response = Response(response="Vulnarbility Issue Affected Version",
+                            status=404)
+
   else:
     print(">> name: '%s' / version: '%s' - Affected / 404 Returned" % (pkg_name, pkg_version))
     flask_response = Response(response="Vulnarbility Issue Affected Version",
