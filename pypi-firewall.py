@@ -164,6 +164,9 @@ def force_reload():
 
 # pypi started from /pypi/
 @proxy.route('/', methods=["GET"])
+@proxy.route('/simple', methods=["GET"])
+@proxy.route('/simple/', methods=["GET"])
+@proxy.route('/simple/<path:file>', methods=["GET"])
 @proxy.route('/pypi/', methods=["GET"])
 @proxy.route('/pypi/<path:file>', methods=["GET"])
 def pypi_request(file=""):
