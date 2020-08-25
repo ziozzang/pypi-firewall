@@ -55,6 +55,9 @@ if 'CVSS_SCORE_BASELINE' in os.environ.keys():
         CVSS_SCORE_BASELINE = os.environ['CVSS_SCORE_BASELINE']
 
 TMP_FILE_NAME = "/tmp/target-bin"
+if 'TMP_FILE_NAME' in os.environ.keys():
+    if len(os.environ['TMP_FILE_NAME']) > 0:
+        TMP_FILE_NAME = os.environ['TMP_FILE_NAME']
 
 # Load Gemnasium DB(git) to Memory
 def convert_generic_verstr(q):
