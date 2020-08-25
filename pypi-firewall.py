@@ -52,7 +52,7 @@ if 'FLAG_SKIP_NO_CVSS_DATA' in os.environ.keys():
 CVSS_SCORE_BASELINE = "6,6,6|6,6,6" # CVSSv2 / CVSSv3
 if 'CVSS_SCORE_BASELINE' in os.environ.keys():
     if len(os.environ['CVSS_SCORE_BASELINE']) > 0:
-        FLAG_SKIP_NO_CVSS = bool(int(os.environ['CVSS_SCORE_BASELINE']))
+        CVSS_SCORE_BASELINE = os.environ['CVSS_SCORE_BASELINE']
 
 TMP_FILE_NAME = "/tmp/target-bin"
 
