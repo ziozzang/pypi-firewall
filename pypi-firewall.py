@@ -105,11 +105,15 @@ def check_cvss_baseline(i):
 
 def print_cvss_score(target):
   if 'cvss_v2' in target.keys():
-    print(">> CVSS V2: Score:", calculate_vector(target['cvss_v2'], cvss2))
-    print(">> CVSS V2: Vector:", target['cvss_v2'])
+    r = calculate_vector(target['cvss_v2'], cvss2)
+    print (r)
+    app.logger.info(">> CVSS V2: Score: %s" % (str(r),))
+    app.logger.info(">> CVSS V2: Vector: %s" % (str(target['cvss_v2']),))
   if 'cvss_v3' in target.keys():
-    print(">> CVSS V3: Score:", calculate_vector(target['cvss_v3'], cvss3))
-    print(">> CVSS V3: Vector:", target['cvss_v3'])
+    r = calculate_vector(target['cvss_v3'], cvss3)
+    print (r)
+    app.logger.info(">> CVSS V3: Score: %s" % (str(r),))
+    app.logger.info(">> CVSS V3: Vector: %s" % (str(target['cvss_v3']),))
     
 # Loading Gemnasium Database
 gem_db = {}
@@ -132,29 +136,30 @@ def load_gemnasium_db():
 def is_affected(names, versions, types="pypi"):
     # TODO: https://github.com/ctxis/cvsslib -> needed to check CVSS score
     if names.lower().strip() in WHITELIST_APPS.lower().split(","):
-        print(">> Whitelisted: ", names.lower().strip())
+        app.logger.info(">> Whitelisted: %s" %(names.lower().strip(),))
         return False
     lock.acquire()
     ks = gem_db[types].keys()
     lock.release()
     if names.lower().strip() not in ks:
-        print(">> No Known Security issues on DB: ", names.lower().strip())
+        app.logger.info(">> No Known Security issues on DB: %s" %(names.lower().strip(),))
         return False
     res = False
     lock.acquire()
     for target in gem_db[types][names.lower()]:
         if target['identifier'] in cve_ids:
-            print("> CVE ID is whitelisted:",target['identifier'])
+            app.logger.info("> CVE ID is whitelisted: %s" % (target['identifier'],))
             continue
         if not check_cvss_baseline(target):
-            print("> CVE Baseline is passed: %s[%s]" % (names, versions))
+            app.logger.info("> CVE Baseline is passed: %s[%s]" % (names, versions))
+
             print_cvss_score(target)
             continue
         if versions in target['fixed_versions']:
             res = res or False
         for i in target['affected_range'].split("||"):
             if versions in SpecifierSet(i.strip()):
-                print("> ID: %s\n> Notes: %s" % (target['identifier'], target['title']))
+                app.logger.info("> ID: %s\n> Notes: %s" % (target['identifier'], target['title']))
                 #print(target)
                 print_cvss_score(target)
                 res = True
@@ -233,7 +238,7 @@ def pypi_request(file=""):
 @proxy.route('/packages/<path:file>', methods=["GET"])
 def packages_request(file=""):
   hostname = "files.pythonhosted.org" # Fixed value
-  print ("F: '%s'" % (file))
+  app.logger.info ("F: '%s'" % (file))
 
   request_headers = {}
   for h in ["Cookie", "Referer", "X-Csrf-Token"]:
@@ -242,7 +247,7 @@ def packages_request(file=""):
 
   if request.query_string: path = "/packages/%s?%s" % (file, request.query_string)
   else: path = "/packages/" + file
-  print(path)
+  app.logger.info(path)
 
   # only for GET method
   form_data = None
@@ -296,18 +301,18 @@ def packages_request(file=""):
     r = os.system("clamdscan %s > /dev/null" %(tmp_file_name,))
     os.system("rm -f %s" % (tmp_file_name,))
     if r == 0:
-      print(">> name: '%s' / version: '%s' - Not Affected" % (pkg_name, pkg_version))
+      app.logger.info(">> name: '%s' / version: '%s' - Not Affected" % (pkg_name, pkg_version))
       d['content-length'] = len(contents)
       flask_response = Response(response=contents,
                             status=resp.status,
                             headers=d)
     else:
-      print(">> name: '%s' / version: '%s' - ClamAV Scanning Failed / 404 Returned" % (pkg_name, pkg_version))
+      app.logger.info(">> name: '%s' / version: '%s' - ClamAV Scanning Failed / 404 Returned" % (pkg_name, pkg_version))
       flask_response = Response(response="Vulnarbility Issue Affected Version",
                             status=404)
 
   else:
-    print(">> name: '%s' / version: '%s' - Affected / 404 Returned" % (pkg_name, pkg_version))
+    app.logger.info(">> name: '%s' / version: '%s' - Affected / 404 Returned" % (pkg_name, pkg_version))
     flask_response = Response(response="Vulnarbility Issue Affected Version",
                             status=404)
 
