@@ -1,6 +1,7 @@
 #!/bin/bash -x
 
 PORTS=${PORTS:-"8080"}
+docker rm -f pypi-firewall || true
 
 docker build -t pypi-firewall .
 if [ -d "./gemnasium-db" ]; then
@@ -21,6 +22,15 @@ docker run -d \
   -v `pwd`/gemnasium-db:/opt/gemnasium-db \
   -v `pwd`/clamav:/var/lib/clamav \
   pypi-firewall
+
+CNT=`docker logs pypi-firewall 2>&1 | grep Running | wc -l`
+while [ $CNT -lt 1 ]
+do
+  sleep 1
+  CNT=`docker logs pypi-firewall 2>&1 | grep Running | wc -l`
+done
+sleep 3
+docker exec pypi-firewall clamd || true
 
 # Wait for DB loading
 sleep 10

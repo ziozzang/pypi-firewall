@@ -30,7 +30,7 @@ from cvsslib import cvss2, cvss3, calculate_vector
 app = Flask(__name__)
 
 # Default Configuration
-DEBUG_FLAG = False
+DEBUG_FLAG = True
 LISTEN_PORT = 8080
 
 GEMNASIUM_DB_PATH = "/opt/gemnasium-db"
@@ -54,10 +54,10 @@ if 'CVSS_SCORE_BASELINE' in os.environ.keys():
     if len(os.environ['CVSS_SCORE_BASELINE']) > 0:
         CVSS_SCORE_BASELINE = os.environ['CVSS_SCORE_BASELINE']
 
-TMP_FILE_NAME = "/tmp/target-bin"
-if 'TMP_FILE_NAME' in os.environ.keys():
-    if len(os.environ['TMP_FILE_NAME']) > 0:
-        TMP_FILE_NAME = os.environ['TMP_FILE_NAME']
+TMP_BASE_PATH = "/tmp"
+if 'TMP_BASE_PATH' in os.environ.keys():
+    if len(os.environ['TMP_BASE_PATH']) > 0:
+        TMP_BASE_PATH = os.environ['TMP_BASE_PATH']
 
 # Load Gemnasium DB(git) to Memory
 def convert_generic_verstr(q):
@@ -212,8 +212,7 @@ def pypi_request(file=""):
           .replace(b'href="https://files.pythonhosted.org/packages/',b'href="/packages/')
   d['content-length'] = len(contents)
 
-  print (type(contents))
-
+  #print (type(contents))
 
   flask_response = Response(response=contents,
                             status=resp.status,
@@ -283,8 +282,10 @@ def packages_request(file=""):
         pkg_version = j[1].strip()
   if not is_affected(pkg_name, pkg_version):
     # ClamAV scanning.
-    open(TMP_FILE_NAME,"wb").write(contents)
-    r = os.system("clamdscan %s > /dev/null" %(TMP_FILE_NAME,))
+    tmp_file_name = subprocess.getoutput("mktemp -u %s/scanfile-XXXXXXXXXX" % (TMP_BASE_PATH,))
+    open(tmp_file_name,"wb").write(contents)
+    r = os.system("clamdscan %s > /dev/null" %(tmp_file_name,))
+    os.system("rm -f %s" % (tmp_file_name,))
     if r == 0:
       print(">> name: '%s' / version: '%s' - Not Affected" % (pkg_name, pkg_version))
       d['content-length'] = len(contents)
