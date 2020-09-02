@@ -14,6 +14,7 @@ import re
 import urllib
 import json
 import tarfile, zipfile
+import threading
 
 import subprocess
 import re
@@ -28,6 +29,7 @@ from werkzeug.exceptions import NotFound
 from cvsslib import cvss2, cvss3, calculate_vector
 
 app = Flask(__name__)
+lock = threading.Lock()
 
 # Default Configuration
 DEBUG_FLAG = True
@@ -132,10 +134,14 @@ def is_affected(names, versions, types="pypi"):
     if names.lower().strip() in WHITELIST_APPS.lower().split(","):
         print(">> Whitelisted: ", names.lower().strip())
         return False
-    if names.lower().strip() not in gem_db[types].keys():
+    lock.acquire()
+    ks = gem_db[types].keys()
+    lock.release()
+    if names.lower().strip() not in ks:
         print(">> No Known Security issues on DB: ", names.lower().strip())
         return False
     res = False
+    lock.acquire()
     for target in gem_db[types][names.lower()]:
         if target['identifier'] in cve_ids:
             print("> CVE ID is whitelisted:",target['identifier'])
@@ -153,6 +159,7 @@ def is_affected(names, versions, types="pypi"):
                 print_cvss_score(target)
                 res = True
                 break
+    lock.release()
     return res
 
 ##############
@@ -162,7 +169,9 @@ proxy = Blueprint('proxy', __name__)
 @proxy.route('/reload/', methods=["GET"])
 def force_reload():
   global gem_db
+  lock.acquire()
   gem_db = load_gemnasium_db()
+  lock.release()
   return "Reloaded"
 
 # pypi started from /pypi/
@@ -306,4 +315,4 @@ def packages_request(file=""):
 
 gem_db = load_gemnasium_db()
 app.register_blueprint(proxy)
-app.run(debug=DEBUG_FLAG, host='0.0.0.0', port=LISTEN_PORT)
+app.run(debug=DEBUG_FLAG, host='0.0.0.0', port=LISTEN_PORT, threaded=True)

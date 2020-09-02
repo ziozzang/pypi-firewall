@@ -31,14 +31,16 @@ pip install --index-url http://127.0.0.1:8081/repository/pypi/simple --trusted-h
 # Setup Server
 
 ```
+# Build your own
 git clone https://github.com/ziozzang/pypi-firewall.git
-docker build -t pypi-firewall pypi-firewall/
+docker build -t ziozzang/pypi-firewall pypi-firewall/
 
+# Just Run
 git clone https://gitlab.com/gitlab-org/security-products/gemnasium-db.git
 docker run -d \
   --name=pypi-firewall \
   -p 8080:8080 \
   -v `pwd`/gemnasium-db:/opt/gemnasium-db \
-  pypi-firewall
+  ziozzang/pypi-firewall
 ```
 
